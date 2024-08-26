@@ -17,7 +17,7 @@ switch recordingMode
     case 2
         H = uicontrol('Style', 'PushButton', ...
                       'String', 'Stop', ...
-                      'Callback', 'stopVal = 1', 'Position', [100 600 100 30]);
+                      'Callback', 'stopVal = 1');
         stopVal = 0;
 end
 
