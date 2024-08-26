@@ -35,7 +35,9 @@ while true
     if dataOk
         frame{myInd} = detObj;
         frame_num{myInd} = frameNumber;
-        saveDetectedObjects(frameNumber, detObj, 'detected_objects.csv');
+        % saveDetectedObjects(frameNumber, detObj, 'detected_objects.csv');
+        PRMStat = convertSEPToPRMStat(detObj);
+        savePRMToFile(PRMStat, 'prm.csv');
         myInd = myInd + 1;
     end
 
