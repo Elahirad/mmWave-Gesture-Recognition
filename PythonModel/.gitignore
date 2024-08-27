@@ -1,0 +1,5 @@
+*__pycache__*
+*.keras
+*.npz
+*.bak
+dataset/
