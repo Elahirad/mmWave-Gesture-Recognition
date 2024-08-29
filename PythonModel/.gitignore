@@ -1,5 +1,6 @@
 *__pycache__*
 *.keras
-*.npz
+/*.npz
 *.bak
 dataset/
+model/
