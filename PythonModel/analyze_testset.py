@@ -37,13 +37,13 @@ def analyze_dataset_results(X, y, model_name):
     )
 
     print(
-        f'Precision={precision_score(y, y_pred, average="weighted", zero_division=0.0) * 100}'
+        f'Precision={precision_score(y, y_pred, average="weighted", zero_division=0.0) * 100}%'
     )
     print(
-        f'Recall={recall_score(y, y_pred, average="weighted", zero_division=0.0) * 100}'
+        f'Recall={recall_score(y, y_pred, average="weighted", zero_division=0.0) * 100}%'
     )
     print(
-        f'F1 Score={f1_score(y, y_pred, average="weighted", zero_division=0.0) * 100}'
+        f'F1 Score={f1_score(y, y_pred, average="weighted", zero_division=0.0) * 100}%'
     )
 
     disp.plot()
