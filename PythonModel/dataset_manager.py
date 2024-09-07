@@ -1,11 +1,8 @@
 import os
 import numpy as np
-from random import randint
-from math import floor
 
 
-# Function to load the dataset
-def load_dataset(samples_from_each_class, root_dir="."):
+def load_dataset(samples_from_each_class, root_dir=".", label_offset=0):
     X_data = []
     y_data = []
     all_entries = os.listdir(root_dir)
@@ -14,7 +11,8 @@ def load_dataset(samples_from_each_class, root_dir="."):
     ]
 
     for label, class_dir in enumerate(classes):
-        print(f"{class_dir} -> {label}")
+        label_to_reg = label + label_offset
+        print(f"{class_dir} -> {label_to_reg}")
         class_path = os.path.join(root_dir, class_dir)
         class_data = []
         for file in os.listdir(class_path):
@@ -22,56 +20,21 @@ def load_dataset(samples_from_each_class, root_dir="."):
                 data = np.load(os.path.join(class_path, file))["prm_matrix"]
                 class_data.append(data)
 
-        # Convert class_data to a numpy array and shuffle it
         class_data = np.array(class_data)
         np.random.shuffle(class_data)
 
-        # Pick the first 3000 samples (or fewer if not enough samples)
         selected_data = class_data[:samples_from_each_class]
 
-        # Append the selected data and labels
         X_data.extend(selected_data)
         y_data.extend(
             [
-                [1 if i == label else 0 for i in range(5)]
+                [1 if i == label_to_reg else 0 for i in range(5)]
                 for j in range(len(selected_data))
             ]
         )
 
     X = np.array(X_data)
     y = np.array(y_data)
-
-    return X, y
-
-
-def augment_dataset(X_orig, y_orig):
-
-    X = np.copy(X_orig)
-    y = np.copy(y_orig)
-
-    for i in range(X.shape[0]):
-        for j in range(X.shape[1]):
-            ncp = randint(0, floor(X[i, j, 3] / 2))
-            ncf = randint(0, floor(X[i, j, 6] / 2))
-            nec = ncp + ncf
-            X[i, j, 3] -= ncp
-            X[i, j, 6] -= ncf
-            X[i, j, 0] -= nec
-
-    random_matrix = 1 * (np.random.rand(X.shape[0], X.shape[1], 7) - 0.5)
-
-    diff = np.zeros((X.shape[0], X.shape[1], 10))
-
-    diff[:, :, 1:3] = random_matrix[:, :, 0:2]
-
-    diff[:, :, 4:6] = random_matrix[:, :, 2:4]
-
-    diff[:, :, 7:10] = random_matrix[:, :, 4:7]
-
-    X = X + np.abs(np.sign(X)) * diff
-
-    X = np.append(X_orig, X, axis=0)
-    y = np.append(y_orig, y, axis=0)
 
     return X, y
 
@@ -83,27 +46,7 @@ def shuffle_dataset(X, y):
     return X, y
 
 
-def load_and_save_dataset(
-    samples_from_each_class, root_dir=".", output_path="Dataset.npz"
-):
-    X, y = load_dataset(samples_from_each_class, root_dir)
-    np.savez_compressed(output_path, X=X, y=y)
-
-
-def load_augment_save_dataset(
-    samples_from_each_class, root_dir=".", output_path="AUG_Dataset.npz"
-):
-    X, y = load_dataset(samples_from_each_class, root_dir)
-    X, y = augment_dataset(X, y)
-    np.savez_compressed(output_path, X=X, y=y)
-
-
-def load_augment_shuffle_dataset(
-    samples_from_each_class, root_dir=".", output_path="AUG_Shuffled_Dataset.npz"
-):
-    X, y = load_dataset(samples_from_each_class, root_dir)
-    X, y = augment_dataset(X, y)
-    X, y = shuffle_dataset(X, y)
+def save_dataset(X, y, output_path):
     np.savez_compressed(output_path, X=X, y=y)
 
 
@@ -113,6 +56,107 @@ def load_saved_dataset(path):
     return X, y
 
 
+def augment_angle(X, y):
+    X = np.copy(X)
+    y = np.copy(y)
+    angle_offsets = np.random.normal(0, 2, (X.shape[0], 1))
+    for i in range(X.shape[0]):
+        X[i, :, 9] += angle_offsets[i]
+
+    return X, y
+
+
+def augment_range(X, y):
+    X = np.copy(X)
+    y = np.copy(y)
+    range_offsets = np.random.normal(0, 2, (X.shape[0], 1))
+    for i in range(X.shape[0]):
+        X[i, :, 1] += range_offsets[i]
+        X[i, :, 4] += range_offsets[i]
+        X[i, :, 7] += range_offsets[i]
+
+    return X, y
+
+
+def augment_velocity(X, y):
+    X = np.copy(X)
+    y = np.copy(y)
+    velocity_factors = np.random.normal(1, 0.25, (X.shape[0], 1))
+    for i in range(X.shape[0]):
+        X[i, :, 2] *= velocity_factors[i]
+        X[i, :, 5] *= velocity_factors[i]
+        X[i, :, 8] *= velocity_factors[i]
+
+    return X, y
+
+
+def augment_time(X, y):
+    X = np.copy(X)
+    y = np.copy(y)
+    offsets = np.random.randint(-10, 10, (X.shape[0], 1))
+    for i in range(X.shape[0]):
+        X[i] = np.roll(X[i], offsets[i], axis=0)
+
+    return X, y
+
+
+def augment_noise(X, y):
+    X = np.copy(X)
+    y = np.copy(y)
+    noise = np.random.normal(0, 0.05, X.shape)
+    for i in range(X.shape[0]):
+        for j in range(X.shape[1]):
+            cp = np.floor(X[i, j, 3] / 2)
+            cf = np.floor(X[i, j, 6] / 2)
+            noise[i, j, 0] = -(cp + cf)
+            noise[i, j, 3] = -cp
+            noise[i, j, 6] = -cf
+
+    X += noise
+
+    return X, y
+
+
 if __name__ == "__main__":
-    samples_from_each_class = 3000
-    load_augment_shuffle_dataset(samples_from_each_class, "dataset")
+
+    X, y = load_dataset(2900, "dataset")
+
+    X_ang, y_ang = augment_angle(X, y)
+    X_noise, y_noise = augment_noise(X, y)
+    X_time, y_time = augment_time(X, y)
+    X_range, y_range = augment_range(X, y)
+    X_velocity, y_velocity = augment_velocity(X, y)
+
+    X = np.append(X, X_ang, axis=0)
+    y = np.append(y, y_ang, axis=0)
+
+    X = np.append(X, X_noise, axis=0)
+    y = np.append(y, y_noise, axis=0)
+
+    X = np.append(X, X_time, axis=0)
+    y = np.append(y, y_time, axis=0)
+
+    X = np.append(X, X_range, axis=0)
+    y = np.append(y, y_range, axis=0)
+
+    X = np.append(X, X_velocity, axis=0)
+    y = np.append(y, y_velocity, axis=0)
+
+    X_unex, y_unex = load_dataset(2900, "unex_dataset", 4)
+
+    X = np.append(X, X_unex, axis=0)
+    y = np.append(y, y_unex, axis=0)
+
+    X, y = shuffle_dataset(X, y)
+
+    save_dataset(X, y, "Dataset.npz")
+
+    X, y = load_dataset(100, "valset")
+
+    X, y = shuffle_dataset(X, y)
+
+    save_dataset(X, y, "Valset.npz")
+
+    X, y = load_dataset(100, "testset")
+
+    save_dataset(X, y, "Testset.npz")
